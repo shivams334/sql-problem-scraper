@@ -1,0 +1,6 @@
+.env
+problem_data.txt
+problem_output.txt
+problem.html
+__pycache__/
+*.pyc
