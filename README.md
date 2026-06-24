@@ -432,14 +432,40 @@ CASE
 END
 ```
 
-**Pandas**
+**Pandas (native)**
 ```python
-np.where(df.salary > 100000, 'High', 'Low')
+# Single condition
+df['level'] = df['salary'].where(df['salary'] <= 100000, 'High').mask(df['salary'] > 100000, 'High')
+
+# Cleaner with apply
+df['level'] = df['salary'].apply(lambda x: 'High' if x > 100000 else 'Low')
+```
+
+**NumPy (inside Pandas) — single condition**
+```python
+import numpy as np
+df['level'] = np.where(df.salary > 100000, 'High', 'Low')
+```
+
+**NumPy — multiple branches (equivalent to multi-WHEN)**
+```python
+conditions = [
+    df.salary > 100000,
+    df.salary >= 50000,
+]
+choices = ['High', 'Medium']
+df['level'] = np.select(conditions, choices, default='Low')
 ```
 
 **PySpark**
 ```python
+# Single condition
 when(col("salary") > 100000, "High").otherwise("Low")
+
+# Multiple branches
+when(col("salary") > 100000, "High")\
+  .when(col("salary") >= 50000, "Medium")\
+  .otherwise("Low")
 ```
 
 ---
@@ -458,7 +484,7 @@ ROW_NUMBER() OVER (
 
 **Pandas**
 ```python
-df.sort_values(['dept', 'salary'], ascending=False)\
+df.sort_values(['dept', 'salary'], ascending=[True, False])\
   .groupby('dept').cumcount() + 1
 ```
 
@@ -472,17 +498,39 @@ row_number().over(w)
 
 ## 19. RANK
 
-| SQL | Pandas | PySpark |
-|-----|--------|---------|
-| `RANK()` | `rank()` | `rank().over(w)` |
+**SQL**
+```sql
+RANK() OVER (PARTITION BY dept ORDER BY salary DESC)
+```
+
+**Pandas**
+```python
+df.groupby('dept')['salary'].rank(method='min', ascending=False)
+```
+
+**PySpark**
+```python
+rank().over(w)
+```
 
 ---
 
 ## 20. DENSE_RANK
 
-| SQL | Pandas | PySpark |
-|-----|--------|---------|
-| `DENSE_RANK()` | `rank(method='dense')` | `dense_rank().over(w)` |
+**SQL**
+```sql
+DENSE_RANK() OVER (PARTITION BY dept ORDER BY salary DESC)
+```
+
+**Pandas**
+```python
+df.groupby('dept')['salary'].rank(method='dense', ascending=False)
+```
+
+**PySpark**
+```python
+dense_rank().over(w)
+```
 
 ---
 
@@ -490,7 +538,7 @@ row_number().over(w)
 
 | SQL | Pandas | PySpark |
 |-----|--------|---------|
-| `LAG(salary)` | `shift(1)` | `lag("salary", 1)` |
+| `LAG(salary)` | `df['salary'].shift(1)` | `lag("salary", 1).over(w)` |
 
 ---
 
@@ -498,7 +546,7 @@ row_number().over(w)
 
 | SQL | Pandas | PySpark |
 |-----|--------|---------|
-| `LEAD(salary)` | `shift(-1)` | `lead("salary", 1)` |
+| `LEAD(salary)` | `df['salary'].shift(-1)` | `lead("salary", 1).over(w)` |
 
 ---
 
@@ -632,7 +680,7 @@ df.filter(col("salary") > avg_salary)
 
 | SQL | Pandas | PySpark |
 |-----|--------|---------|
-| `EXCEPT` | `concat + drop_duplicates` | `exceptAll()` |
+| `EXCEPT` | `pd.merge(df1, df2, how='left', indicator=True).query('_merge=="left_only"').drop('_merge', axis=1)` | `df1.exceptAll(df2)` |
 
 ---
 
@@ -712,21 +760,21 @@ AVG(sales) OVER (
 
 ### NTILE
 
-| SQL | PySpark |
-|-----|---------|
-| `NTILE(4)` | `ntile(4).over(w)` |
+| SQL | Pandas | PySpark |
+|-----|--------|---------|
+| `NTILE(4)` | `pd.qcut(df['salary'], q=4, labels=False) + 1` | `ntile(4).over(w)` |
 
 ### Percent Rank
 
-| SQL | PySpark |
-|-----|---------|
-| `PERCENT_RANK()` | `percent_rank().over(w)` |
+| SQL | Pandas | PySpark |
+|-----|--------|---------|
+| `PERCENT_RANK()` | `df['salary'].rank(pct=True)` | `percent_rank().over(w)` |
 
 ### CUME_DIST
 
-| SQL | PySpark |
-|-----|---------|
-| `CUME_DIST()` | `cume_dist().over(w)` |
+| SQL | Pandas | PySpark |
+|-----|--------|---------|
+| `CUME_DIST()` | `df['salary'].rank(pct=True, method='max')` | `cume_dist().over(w)` |
 
 ---
 
