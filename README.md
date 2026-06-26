@@ -826,6 +826,76 @@ w_range = Window.partitionBy("dept").orderBy("salary")\
                 .rangeBetween(-1000, 1000)
 ```
 
+### Frame Spec (SQL)
+
+The frame clause defines which rows relative to the current row are included in the window calculation.
+
+**Syntax**
+```sql
+OVER (
+  PARTITION BY col
+  ORDER BY col
+  {ROWS | RANGE} BETWEEN frame_start AND frame_end
+)
+```
+
+**Frame boundaries**
+
+| Boundary | Meaning |
+|----------|---------|
+| `UNBOUNDED PRECEDING` | First row of the partition |
+| `N PRECEDING` | N rows before current row |
+| `CURRENT ROW` | Current row |
+| `N FOLLOWING` | N rows after current row |
+| `UNBOUNDED FOLLOWING` | Last row of the partition |
+
+**ROWS vs RANGE**
+
+| Mode | Behaviour |
+|------|-----------|
+| `ROWS` | Physical offset — counts exact rows |
+| `RANGE` | Logical offset — includes all rows with the same ORDER BY value as the boundary row (handles ties) |
+
+**Examples**
+
+```sql
+-- Running total (start of partition → current row)
+SUM(sales) OVER (
+  PARTITION BY dept ORDER BY date
+  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+)
+
+-- 7-day moving average (6 rows back + current)
+AVG(sales) OVER (
+  ORDER BY date
+  ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+)
+
+-- Centred 3-row window (1 before, current, 1 after)
+AVG(sales) OVER (
+  ORDER BY date
+  ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING
+)
+
+-- Entire partition (same result as no frame clause)
+SUM(sales) OVER (
+  PARTITION BY dept
+  ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+)
+
+-- From current row to end of partition
+SUM(sales) OVER (
+  PARTITION BY dept ORDER BY date
+  ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+)
+
+-- RANGE example: includes all rows with the same date as current row
+SUM(sales) OVER (
+  PARTITION BY dept ORDER BY date
+  RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+)
+```
+
 ### ROW_NUMBER
 
 **SQL**
