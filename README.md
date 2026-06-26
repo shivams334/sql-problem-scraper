@@ -106,6 +106,82 @@ df[df['salary'] > 50000]
 df.filter(df.salary > 50000)
 ```
 
+### IN / NOT IN
+
+**SQL**
+```sql
+WHERE department IN ('IT', 'HR')
+WHERE department NOT IN ('IT', 'HR')
+```
+
+**Pandas**
+```python
+df[df['department'].isin(['IT', 'HR'])]
+df[~df['department'].isin(['IT', 'HR'])]
+```
+
+**PySpark**
+```python
+df.filter(col("department").isin("IT", "HR"))
+df.filter(~col("department").isin("IT", "HR"))
+```
+
+### BETWEEN
+
+**SQL**
+```sql
+WHERE salary BETWEEN 50000 AND 100000
+```
+
+**Pandas**
+```python
+df[df['salary'].between(50000, 100000)]
+```
+
+**PySpark**
+```python
+df.filter(col("salary").between(50000, 100000))
+```
+
+### LIKE / Contains
+
+**SQL**
+```sql
+WHERE name LIKE 'A%'
+```
+
+**Pandas**
+```python
+df[df['name'].str.startswith('A')]
+df[df['name'].str.contains('pattern')]   # supports regex
+```
+
+**PySpark**
+```python
+df.filter(col("name").like("A%"))
+df.filter(col("name").rlike("pattern"))  # regex
+```
+
+### IS NULL / IS NOT NULL
+
+**SQL**
+```sql
+WHERE salary IS NULL
+WHERE salary IS NOT NULL
+```
+
+**Pandas**
+```python
+df[df['salary'].isna()]
+df[df['salary'].notna()]
+```
+
+**PySpark**
+```python
+df.filter(col("salary").isNull())
+df.filter(col("salary").isNotNull())
+```
+
 ---
 
 ## 4. Multiple Conditions
@@ -147,6 +223,40 @@ df.sort_values("salary", ascending=False)
 **PySpark**
 ```python
 df.orderBy(col("salary").desc())
+```
+
+### Multiple Columns / Mixed Directions
+
+**SQL**
+```sql
+ORDER BY department ASC, salary DESC
+```
+
+**Pandas**
+```python
+df.sort_values(['department', 'salary'], ascending=[True, False])
+```
+
+**PySpark**
+```python
+df.orderBy(col("department").asc(), col("salary").desc())
+```
+
+### Nulls First / Last
+
+**SQL**
+```sql
+ORDER BY salary DESC NULLS LAST
+```
+
+**Pandas**
+```python
+df.sort_values("salary", ascending=False, na_position='last')
+```
+
+**PySpark**
+```python
+df.orderBy(col("salary").desc_nulls_last())
 ```
 
 ---
@@ -200,8 +310,17 @@ df.withColumn("new_salary", col("salary") * 1.1)
 | Lower | `LOWER()` | `.str.lower()` | `lower()` |
 | Length | `LENGTH()` | `.str.len()` | `length()` |
 | Trim | `TRIM()` | `.str.strip()` | `trim()` |
-| Substring | `SUBSTR()` | `.str.slice()` | `substring()` |
+| Left trim | `LTRIM()` | `.str.lstrip()` | `ltrim()` |
+| Right trim | `RTRIM()` | `.str.rstrip()` | `rtrim()` |
+| Substring | `SUBSTR(col,1,3)` | `.str.slice(0,3)` | `substring(col,1,3)` |
 | Replace | `REPLACE()` | `.str.replace()` | `regexp_replace()` |
+| Concat | `CONCAT(a, b)` | `df['a'] + df['b']` | `concat(col('a'), col('b'))` |
+| Split | `SPLIT_PART(col,',',1)` | `.str.split(',')` | `split(col, ',')` |
+| Pad left | `LPAD(col,10,'0')` | `.str.zfill(10)` | `lpad(col, 10, '0')` |
+| Pad right | `RPAD(col,10,' ')` | `.str.ljust(10)` | `rpad(col, 10, ' ')` |
+| Position | `INSTR(col,'a')` | `.str.find('a')` | `instr(col, 'a')` |
+| Starts with | `col LIKE 'A%'` | `.str.startswith('A')` | `.startswith('A')` |
+| Ends with | `col LIKE '%A'` | `.str.endswith('A')` | `.endswith('A')` |
 
 ---
 
@@ -241,6 +360,54 @@ DATEDIFF(day, date1, date2)
 datediff("date2", "date1")
 ```
 
+### Extract Parts
+
+| Part | SQL | Pandas | PySpark |
+|------|-----|--------|---------|
+| Year | `YEAR(date)` | `df['date'].dt.year` | `year(col("date"))` |
+| Month | `MONTH(date)` | `df['date'].dt.month` | `month(col("date"))` |
+| Day | `DAY(date)` | `df['date'].dt.day` | `dayofmonth(col("date"))` |
+| Hour | `HOUR(date)` | `df['date'].dt.hour` | `hour(col("date"))` |
+| Day of week | `DAYOFWEEK(date)` | `df['date'].dt.dayofweek` | `dayofweek(col("date"))` |
+| Quarter | `QUARTER(date)` | `df['date'].dt.quarter` | `quarter(col("date"))` |
+
+### Date Add / Subtract
+
+**SQL**
+```sql
+DATE_ADD(date, 7)
+DATE_SUB(date, 7)
+```
+
+**Pandas**
+```python
+df['date'] + pd.Timedelta(days=7)
+df['date'] - pd.Timedelta(days=7)
+```
+
+**PySpark**
+```python
+date_add(col("date"), 7)
+date_sub(col("date"), 7)
+```
+
+### Format Date
+
+**SQL**
+```sql
+DATE_FORMAT(date, '%Y-%m')
+```
+
+**Pandas**
+```python
+df['date'].dt.strftime('%Y-%m')
+```
+
+**PySpark**
+```python
+date_format(col("date"), "yyyy-MM")
+```
+
 ---
 
 ## 10. DISTINCT
@@ -265,27 +432,40 @@ df.select("department").distinct()
 
 ## 11. Aggregations
 
-### Count
+| Aggregation | SQL | Pandas | PySpark |
+|-------------|-----|--------|---------|
+| Count | `COUNT(*)` | `df.shape[0]` | `df.count()` |
+| Count column | `COUNT(salary)` | `df['salary'].count()` | `count("salary")` |
+| Count distinct | `COUNT(DISTINCT dept)` | `df['dept'].nunique()` | `countDistinct("dept")` |
+| Sum | `SUM(salary)` | `df['salary'].sum()` | `sum("salary")` |
+| Avg | `AVG(salary)` | `df['salary'].mean()` | `avg("salary")` |
+| Min | `MIN(salary)` | `df['salary'].min()` | `min("salary")` |
+| Max | `MAX(salary)` | `df['salary'].max()` | `max("salary")` |
+| Std dev | `STDDEV(salary)` | `df['salary'].std()` | `stddev("salary")` |
+| Variance | `VARIANCE(salary)` | `df['salary'].var()` | `variance("salary")` |
 
-| SQL | Pandas | PySpark |
-|-----|--------|---------|
-| `COUNT(*)` | `df.shape[0]` | `df.count()` |
+### Conditional Count
 
-### Sum
+**SQL**
+```sql
+COUNT(CASE WHEN salary > 100000 THEN 1 END) AS high_earners
+```
 
-| SQL | Pandas | PySpark |
-|-----|--------|---------|
-| `SUM(salary)` | `df.salary.sum()` | `sum("salary")` |
+**Pandas**
+```python
+(df['salary'] > 100000).sum()
+```
 
-### Avg
-
-| SQL | Pandas | PySpark |
-|-----|--------|---------|
-| `AVG(salary)` | `df.salary.mean()` | `avg("salary")` |
+**PySpark**
+```python
+count(when(col("salary") > 100000, 1)).alias("high_earners")
+```
 
 ---
 
 ## 12. GROUP BY
+
+### Single Column
 
 **SQL**
 ```sql
@@ -302,6 +482,85 @@ df.groupby('department')['salary'].mean()
 **PySpark**
 ```python
 df.groupBy("department").agg(avg("salary"))
+```
+
+### Multiple Columns
+
+**SQL**
+```sql
+SELECT department, gender, AVG(salary)
+FROM employees
+GROUP BY department, gender;
+```
+
+**Pandas**
+```python
+df.groupby(['department', 'gender'])['salary'].mean()
+```
+
+**PySpark**
+```python
+df.groupBy("department", "gender").agg(avg("salary"))
+```
+
+### Multiple Aggregations
+
+**SQL**
+```sql
+SELECT department,
+       AVG(salary)  AS avg_sal,
+       MAX(salary)  AS max_sal,
+       COUNT(*)     AS headcount
+FROM employees
+GROUP BY department;
+```
+
+**Pandas**
+```python
+df.groupby('department').agg(
+    avg_sal=('salary', 'mean'),
+    max_sal=('salary', 'max'),
+    headcount=('salary', 'count')
+).reset_index()
+```
+
+**PySpark**
+```python
+df.groupBy("department").agg(
+    avg("salary").alias("avg_sal"),
+    max("salary").alias("max_sal"),
+    count("*").alias("headcount")
+)
+```
+
+### Multiple Columns + Multiple Aggregations
+
+**SQL**
+```sql
+SELECT department, gender,
+       AVG(salary) AS avg_sal,
+       MIN(salary) AS min_sal,
+       MAX(salary) AS max_sal
+FROM employees
+GROUP BY department, gender;
+```
+
+**Pandas**
+```python
+df.groupby(['department', 'gender']).agg(
+    avg_sal=('salary', 'mean'),
+    min_sal=('salary', 'min'),
+    max_sal=('salary', 'max')
+).reset_index()
+```
+
+**PySpark**
+```python
+df.groupBy("department", "gender").agg(
+    avg("salary").alias("avg_sal"),
+    min("salary").alias("min_sal"),
+    max("salary").alias("max_sal")
+)
 ```
 
 ---
@@ -380,6 +639,41 @@ pd.merge(emp, dept, on='dept_id', how='outer')
 emp.join(dept, "dept_id", "outer")
 ```
 
+### Join on Multiple Keys
+
+**SQL**
+```sql
+JOIN dept d ON e.dept_id = d.dept_id
+          AND e.location = d.location
+```
+
+**Pandas**
+```python
+pd.merge(emp, dept, on=['dept_id', 'location'])
+```
+
+**PySpark**
+```python
+emp.join(dept, ["dept_id", "location"], "inner")
+```
+
+### Join on Different Column Names
+
+**SQL**
+```sql
+JOIN dept d ON e.dept_id = d.id
+```
+
+**Pandas**
+```python
+pd.merge(emp, dept, left_on='dept_id', right_on='id')
+```
+
+**PySpark**
+```python
+emp.join(dept, emp.dept_id == dept.id, "inner")
+```
+
 ---
 
 ## 15. UNION
@@ -412,12 +706,52 @@ COALESCE(col, 0)
 
 **Pandas**
 ```python
-df.fillna(0)
+df['col'].fillna(0)
+df.fillna({'salary': 0, 'name': 'Unknown'})  # per column
 ```
 
 **PySpark**
 ```python
 coalesce(col("x"), lit(0))
+```
+
+### NULLIF
+
+**SQL**
+```sql
+NULLIF(col, 0)   -- returns NULL if col = 0
+```
+
+**Pandas**
+```python
+df['col'].replace(0, None)
+```
+
+**PySpark**
+```python
+nullif(col("x"), lit(0))
+```
+
+### IS NULL Check / Drop
+
+**SQL**
+```sql
+SELECT * FROM emp WHERE salary IS NULL
+```
+
+**Pandas**
+```python
+df[df['salary'].isna()]          # filter nulls
+df.dropna(subset=['salary'])     # drop rows where salary is null
+df.dropna()                      # drop rows with any null
+df.isnull().sum()                # count nulls per column
+```
+
+**PySpark**
+```python
+df.filter(col("salary").isNull())
+df.dropna(subset=["salary"])
+df.dropna()
 ```
 
 ---
@@ -471,6 +805,26 @@ when(col("salary") > 100000, "High")\
 ---
 
 ## 18. Window Functions
+
+### Window Definition
+
+**SQL**
+```sql
+OVER (PARTITION BY dept ORDER BY salary DESC)
+```
+
+**PySpark**
+```python
+from pyspark.sql.window import Window
+w = Window.partitionBy("dept").orderBy(desc("salary"))
+
+# With frame spec
+w_rows = Window.partitionBy("dept").orderBy("date")\
+               .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+w_range = Window.partitionBy("dept").orderBy("salary")\
+                .rangeBetween(-1000, 1000)
+```
 
 ### ROW_NUMBER
 
@@ -550,21 +904,34 @@ dense_rank().over(w)
 
 ---
 
-## 23. Running Total
+## 23. Running Total / Cumulative Functions
+
+| Function | SQL | Pandas | PySpark |
+|----------|-----|--------|---------|
+| Running sum | `SUM(sales) OVER (ORDER BY date)` | `df['sales'].cumsum()` | `sum("sales").over(w)` |
+| Running max | `MAX(sales) OVER (ORDER BY date)` | `df['sales'].cummax()` | `max("sales").over(w)` |
+| Running min | `MIN(sales) OVER (ORDER BY date)` | `df['sales'].cummin()` | `min("sales").over(w)` |
+| Running avg | `AVG(sales) OVER (ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)` | `df['sales'].expanding().mean()` | `avg("sales").over(w_rows)` |
+
+### Moving / Rolling Average
 
 **SQL**
 ```sql
-SUM(sales) OVER (ORDER BY date)
+AVG(sales) OVER (
+  ORDER BY date
+  ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+)
 ```
 
 **Pandas**
 ```python
-df['sales'].cumsum()
+df['sales'].rolling(window=7).mean()
 ```
 
 **PySpark**
 ```python
-sum("sales").over(w)
+w7 = Window.orderBy("date").rowsBetween(-6, 0)
+avg("sales").over(w7)
 ```
 
 ---
